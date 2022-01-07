@@ -1,2 +1,2 @@
 # CodesOtakuModules
-This is the source made possible for my channel https://www.youtube.com/CodesOtaku
+This is the source code made possible for my channel https://www.youtube.com/CodesOtaku mainly
