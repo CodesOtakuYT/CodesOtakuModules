@@ -69,8 +69,11 @@ local function Length(data : table)
 		end
 	elseif dataType == "number" then
 		local abs = math.abs
+		local last = data[1]
 		for i = 2, #data do
-			length += abs(data[i] - data[i-1])
+			local current = data[i]
+			length += abs(current - last)
+			last = current
 		end
 	else
 		error(string.format("data values type '%s' isn't supported in function 'Length'", dataType), 2)
