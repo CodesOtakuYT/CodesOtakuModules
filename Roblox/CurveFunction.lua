@@ -61,8 +61,11 @@ local function Length(data : table)
 	local dataType = typeof(data[1])
 
 	if dataType == "Vector3" or dataType == "Vector2" then
+		local last = data[1]
 		for i = 2, #data do
-			length += (data[i] - data[i-1]).magnitude
+			local current = data[i]
+			length += (current - last).magnitude
+			last = current
 		end
 	elseif dataType == "number" then
 		local abs = math.abs
