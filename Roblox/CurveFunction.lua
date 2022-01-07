@@ -244,6 +244,7 @@ local function Lerper(data : table)
 		error(string.format("Expected '2' samples or more, got '%d'", samples), 2)
 	end
 end
+
 --[[
 	Path(func, minimumSpeed : number, accuracy : number, lengthAccuracy)
 	
