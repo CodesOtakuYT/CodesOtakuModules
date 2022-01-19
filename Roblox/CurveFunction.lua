@@ -127,7 +127,7 @@ local function BakeLinear(data : table, delta : number, length : number?, carryI
 
 			local dir = target-pos
 			local distance = dir.Magnitude
-			dir = dir.Unit
+			dir = dir/distance
 
 			local distanceLeft = distance - delta
 
@@ -258,7 +258,7 @@ end
 	it can be done manually more efficiently depending on your use case and constraints
 	but I added this for convinience and for people who doesn't know what they're doing
 ]]
-local function Path(func, minimumSpeed : number, accuracy : number, lengthAccuracy)
+local function Path(func, minimumSpeed : number, accuracy : number, lengthAccuracy : number?)
 	local data = Bake(func, lengthAccuracy or accuracy)
 	local length = Length(data)
 	data = lengthAccuracy and Bake(func, accuracy) or data
