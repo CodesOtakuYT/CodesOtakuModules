@@ -504,15 +504,15 @@ local function filterT(t, func, isOrdered : bool?)
 	local r = {}
 	
 	if isOrdered then
-		for i, v in ipairs(func) do
+		for i, v in ipairs(t) do
 			if func(v, i) then
-				table.insert(v)
+				table.insert(r, v)
 			end
 		end
 	else
-		for k, v in pairs(func) do
+		for k, v in pairs(t) do
 			if func(v, k) then
-				t[k] = v
+				r[k] = v
 			end
 		end
 	end
