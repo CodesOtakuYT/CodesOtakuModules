@@ -582,7 +582,7 @@ local function keysT(t, isRecursive, tOut)
 	
 	for k,v in pairs(t) do
 		if isRecursive and typeof(v) == "table" then
-			keysT(v, true, r)
+			keysT(k, true, r)
 		else
 			table.insert(r, k)
 		end
