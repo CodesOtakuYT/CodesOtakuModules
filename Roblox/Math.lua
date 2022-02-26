@@ -31,6 +31,7 @@ local abs = math.abs
 local pow = math.pow
 local PI = math.pi
 local sign = math.sign
+local min, max = math.min, math.max
 
 -- Constructors
 local vector2, vector3 = Vector2.new, Vector3.new
@@ -212,6 +213,19 @@ local function smoothStep(from, to, x)
 	return s*s*(3-2*s)
 end
 
+local function lerp(a, b, t)
+	return a + (b-a)*t
+end
+
+local function inverseLerp(c, d, x)
+	return (x-c)/(d-c)
+end
+
+local function map(i1, i2, o1, o2, x)
+	-- return lerp(o1, o2, inverseLerp(i1, i2, x))
+	return o1 + (o2-o1)*((x-i1)/(i2-i1))
+end
+
 -- Comparaison functions
 local function approxEq(x, y, epsilon)
 	epsilon = epsilon or EPSILON
@@ -224,11 +238,15 @@ local function approxZero(x, epsilon)
 end
 
 -- Table helper functions
-local function copyT(t, c)
-	local c = c or {}
+local function copyT(t, c, isDeepCopy)
+	c = c or {}
 
 	for k,v in pairs(t) do
-		c[k] = v
+		if isDeepCopy and typeof(v) == "table" then
+			c[k] = copyT(v, nil, true)
+		else
+			c[k] = v
+		end
 	end
 
 	return c
@@ -277,6 +295,10 @@ local function quotientDerivative(x, dx, f, g)
 	return (gx*derivative(x, dx, f) + f(x)*derivative(x, dx, g))/(gx^2)
 end
 
+local function compositeDerivative(x, dx, f, g)
+	return derivative(g(x), dx, f)*derivative(x, dx, g)
+end
+
 local function integral(x1, x2, dx, f)
 	local primitive = definitePrimitive[f]
 
@@ -287,11 +309,11 @@ local function integral(x1, x2, dx, f)
 	dx = dx or abs(x2-x1)*EPSILON
 	local surface = 0
 
-	for x = x1, x2, dx do
+	for x = min(x1, x2), max(x1, x2), abs(dx) do
 		surface += f(x)*dx
 	end
 
-	return surface
+	return surface*sign(x2-x1)*sign(dx)
 end
 
 local function integralAbs(x1, x2, dx, f)
@@ -463,6 +485,162 @@ local function processPairsT(t, func)
 	return r
 end
 
+local function mapT(t, func, isOverride, isStrict)
+	local r = isOverride and t or {}
+	
+	for k, v in pairs(func) do
+		local rv, rk = func(v, k)
+		if isStrict then
+			r[rk] = rv
+		else
+			r[rk or k] = rv
+		end
+	end
+	
+	return r
+end
+
+local function filterT(t, func, isOrdered : bool?)
+	local r = {}
+	
+	if isOrdered then
+		for i, v in ipairs(func) do
+			if func(v, i) then
+				table.insert(v)
+			end
+		end
+	else
+		for k, v in pairs(func) do
+			if func(v, k) then
+				t[k] = v
+			end
+		end
+	end
+
+	return r
+end
+
+local function countT(t, func)
+	local n = 0
+	
+	for k,v in pairs(t) do
+		n += func(v) or 0
+	end
+	
+	return n
+end
+
+local function countMulT(t, func)
+	local n = 1
+
+	for k,v in pairs(t) do
+		n *= func(v) or 0
+	end
+
+	return n
+end
+
+local function zipT(t1, t2)
+	local r = {}
+	
+	for i = 1, min(#t1, #t2) do
+		r[i] = {t1[i], t2[i]}
+	end
+	
+	return r
+end
+
+local function unzipT(t)
+	local r1, r2 = {},{}
+	
+	for _, tuple in ipairs(t) do
+		table.insert(r1, tuple[1])
+		table.insert(r2, tuple[2])
+	end
+	
+	return r1, r2
+end
+
+local function toRawT(t, isRecursive, tOut)
+	local r = tOut or {}
+	
+	for _, tuple in ipairs(t) do
+		for _, element in ipairs(tuple) do
+			if isRecursive and typeof(element) == "table" then
+				toRawT(t, true, r)
+			else
+				table.insert(r, element)
+			end
+		end
+	end
+	
+	return r
+end
+
+local function keysT(t, isRecursive, tOut)
+	local r = tOut or {}
+	
+	for k,v in pairs(t) do
+		if isRecursive and typeof(v) == "table" then
+			keysT(v, true, r)
+		else
+			table.insert(r, k)
+		end
+	end
+	
+	return r
+end
+
+local function valuesT(t, isRecursive, tOut)
+	local r = tOut or {}
+
+	for _,v in pairs(t) do
+		if isRecursive and typeof(v) == "table" then
+			keysT(v, true, r)
+		else
+			table.insert(r, v)
+		end
+	end
+
+	return r
+end
+
+local function sampleT(func, samples, x1, x2)
+	if samples < 2 then
+		error("A minimum of 2 samples is required", 2)
+	end
+
+	local result = table.create(samples)
+
+	-- we're starting from 0 for the calculations
+	samples = samples - 1
+
+	for i = 0, samples do
+		-- table index starts from 1
+		local t = i/samples
+		result[i+1] = func(lerp(x1, x2, t))
+	end
+
+	return result
+end
+
+-- Vector math
+local function distanceV(vec1, vec2)
+	return (vec1 - vec2).magnitude
+end
+
+local function midPosV(vec1, vec2)
+	return (vec1 + vec2)/2
+end
+
+local function applyV(vec, func)
+	return Vector3.new(func(vec.X, 1), func(vec.Y, 2), func(vec.Z, 3))
+end
+
+local function absV(vec)
+	return applyV(vec, abs)
+end
+
 return {
 	----> Constants
 	PI = PI, -- Ratio of a circle's circumference to its diameter.
@@ -475,14 +653,14 @@ return {
 	cbrt = cbrt, -- Cubic root; (x)
 	inverse = inverse, -- 1/x; (x)
 	ln = ln, -- Natural logarithm; (x)
-	log2 = log2,
-	cos = cos,
-	sin = sin,
-	ncos = ncos, -- -cos(x)
+	log2 = log2, -- Log of base 2
+	cos = cos, -- cos(x)
+	sin = sin, -- sin(x)
+	ncos = ncos, -- -cos(x), it might seem silly, but I added this so I can optimize derivative and integral by referencing it, so you can pass in this function to integral, and it's already optimized
 	nsin = nsin, -- -sin(x)
-	sec = sec, -- Secant; (x)
-	csc = csc, -- Co-secant; (x)
-	cot = cot, -- Co-tangent; (x)	
+	sec = sec, -- Secant(x), I don't use this functions usually, but it might be helpful if you have a formula that use them and you're too lazy like me
+	csc = csc, -- Co-secant(x),
+	cot = cot, -- Co-tangent(x),
 	ease = ease, -- https://godotengine.org/qa/59172/how-do-i-properly-use-the-ease-function
 	smoothStep = smoothStep, -- https://thebookofshaders.com/glossary/?search=smoothstep
 	factorial = factorial, -- x!
@@ -496,7 +674,10 @@ return {
 	step = step, -- returns the closest multiple of factor to x, can be used to snap a position's components to a grid (Minecraft...)
 	snap = snap, -- the same as step, but can also handle seperation, Ex: your grid have a border
 	stepDecimals = stepDecimals, -- round the number to n digits after the comma
-
+	lerp = lerp, -- takes a range [a -> b] and a t value [0->1]. it returns a value travalling from a to b linearly, where t is the percentage it advanced (Ex: 50% = 0.5)
+	inverseLerp = inverseLerp, -- takes a range [c -> d] and a value x, it returns the t value of the value in range, basically where the value is relative to the range.
+	map = map, -- lerp(o1, o2, inverseLerp(i1, i2, x)), remaps a value x from the range [i1->i2] to [o1->o2], can be useful to create sliders.
+	
 	----> Conversion
 	cartesian2polar = cartesian2polar, -- x, y to rau, angle
 	cylindrical2cartesian = cylindrical2cartesian, -- rau, angle, z to x,y,z
@@ -510,11 +691,12 @@ return {
 	----> Calculus
 	derivative = derivative, -- calculate the derivative of f using it's definite derivative (optimized) or numerically if none found
 	integral = integral, -- calculate the integral of f from x1 to x2 using it's definite primitive (optimized) or numerically if none found
-	integralAbs = integralAbs,
-	addDefiniteFunction = addDefiniteFunction,
-	productDerivative = productDerivative,
-	quotientDerivative = quotientDerivative,
-
+	integralAbs = integralAbs, -- the absolute version of the integral, the sign of f(x) is ignored
+	addDefiniteFunction = addDefiniteFunction, -- takes 2 functions. a function and it's derivative, it will be used by the functions above if the definite version exist, as it's much better and accurate than the numerical method
+	productDerivative = productDerivative, -- (f*g)' = f'g-g'f the chain rule
+	quotientDerivative = quotientDerivative, -- (f/g)' = (f'g-g'f)/(g^2) the chain rule and the derivative of the inverse of f(x)
+	compositeDerivative = compositeDerivative, -- (f(g))' = f'(g)*g'
+	
 	----> Table math
 	sumT = sumT, -- Sum of the values; (table)
 	differenceT = differenceT, -- Difference of the values; (table)
@@ -527,7 +709,23 @@ return {
 	countValuesT = countValuesT, -- Returns a table with the count of all the values in the table; (table)
 	rangeT = rangeT, -- Returns {min, minIndex}, {max, maxIndex}; (table)
 	processPairsT = processPairsT, -- Gets a table with 2*n elements, it returns a table with n elements by processing each pair with the function f
-
+	mapT = mapT, -- Gets a table [x1, x2, x3...xn] and a function, returns [f(x1), f(x2), f(x3)...f(xn)]
+	filterT = filterT, -- Gets a table and a function, returns a new table with the elements that evaluated the function f(value, key) to true
+	countT = countT, -- Accumulates the result of a function f(v, k) traversing a table, returns the accumulated value
+	countMulT = countMulT, -- The same as countT but with multiplication
+	sampleT = sampleT, -- Sample function output n times from x1 to x2 linearly
+	
+	----> Vector math
+	distanceV = distanceV, -- Returns the distance between the position vec1 and vec2
+	midPosV = midPosV, -- Returns the middle position between the position vec1 and vec2, equivalent to lerp(vec1, vec2, 0.5)
+	applyV = applyV, -- Returns a new Vector3 by applying a function on the X, Y and Z components of a Vector3
+	absV = absV, -- Returns a new Vector3 where all the components of the vector are absolute (positive or nil)
+	
 	----> Helper functions
-	copyT = copyT,
+	copyT = copyT, -- Returns a copy of a table
+	invertT = invertT, -- the keys becomes the values and vice versa, takes a table [y1 = x1, y2 = x2...yn = xn], returns [x1 = y1, x2 = y2...xn = yn]
+	zipT = zipT, -- takes 2 tables and zip them together {{t1[1], t2[1]}, {t1[2], t2[2]}...{t1[n], t2[n]}}
+	unzipT = unzipT, -- the inverse of zip, takes 1 table of pairs and unzip it into 2 tables
+	valuesT = valuesT, -- return a table of all the values inside the table, there is also recursive mode for nested tables
+	keysT = keysT, -- the same as valuesT, but for table keys
 }
