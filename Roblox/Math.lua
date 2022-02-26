@@ -51,11 +51,11 @@ local function nsin(x)
 end
 
 local function nrt(x, n)
-	return x^(-1/n)
+	return x^(1/n)
 end
 
 local function cbrt(x)
-	return x^(-1/3)
+	return x^(1/3)
 end
 
 local function ln(x)
@@ -97,7 +97,7 @@ local function factorial(x)
 	x = abs(x)
 	local c = factCache[x]
 	if c then return c*sign end
-	
+
 	c = x*factorial(x-1)
 	factCache[x] = c
 	return c*sign
@@ -120,7 +120,7 @@ local fibCache = {
 local function fibonacci(x)
 	local sign = sign(x)
 	x = abs(x)
-	
+
 	local c = fibCache[x]
 	if c then return c*sign end
 	c = fibonacci(x-1)+fibonacci(x-2)
@@ -139,7 +139,7 @@ end
 
 local function toFract(x, base)
 	base = base or 10
-	return x*pow(10, -ceil(log(x, base)))
+	return x*pow(base, -ceil(log(x, base)))
 end
 
 local function wrap(x, min, max)
@@ -154,16 +154,16 @@ end
 
 local function snap(x, factor, offset, sep)
 	if factor == 0 then return x end
-	
+
 	local a = step(x, factor + sep, offset)
 	local b = a
-	
+
 	if x >= 0 then
 		b -= sep
 	else
 		b += step
 	end
-	
+
 	return abs(x-a < x-b and a or b)
 end
 
@@ -189,7 +189,7 @@ end
 
 local function ease(x, curve)
 	x = clamp(x, 0, 1)
-	
+
 	if curve > 0 then
 		if curve < 1 then
 			return 1 - pow(1-x, 1/curve)
@@ -226,21 +226,21 @@ end
 -- Table helper functions
 local function copyT(t, c)
 	local c = c or {}
-	
+
 	for k,v in pairs(t) do
 		c[k] = v
 	end
-	
+
 	return c
 end
 
 local function invertT(t, r)
 	r = r or {}
-	
+
 	for k,v in pairs(t) do
 		r[v] = k
 	end
-	
+
 	return r
 end
 
@@ -258,13 +258,13 @@ local definitePrimitive = invertT(definiteDerivative)
 
 local function derivative(x, dx, f)
 	local dF = definiteDerivative[f]
-	
+
 	if dF then
 		return dF(x)
 	end
-	
+
 	dx = dx or EPSILON
-	
+
 	return (f(x+dx)-f(x))/dx
 end
 
@@ -279,18 +279,18 @@ end
 
 local function integral(x1, x2, dx, f)
 	local primitive = definitePrimitive[f]
-	
+
 	if primitive then
 		return primitive(x2) - primitive(x1)
 	end
-	
+
 	dx = dx or abs(x2-x1)*EPSILON
 	local surface = 0
-	
+
 	for x = x1, x2, dx do
 		surface += f(x)*dx
 	end
-	
+
 	return surface
 end
 
@@ -327,11 +327,11 @@ end
 -- Table math
 local function sumT(t)
 	local n = 0
-	
+
 	for _,v in pairs(t) do
 		n += v
 	end
-	
+
 	return n
 end
 
@@ -372,13 +372,13 @@ end
 
 local function medianT(t)
 	t = copyT(t)
-	
+
 	table.sort(t, function(a, b)
 		return a < b
 	end)
-	
+
 	local l = #t
-	
+
 	if l%2 == 0 then
 		local mid = l/2
 		return (t[mid]+t[mid+1])/2
@@ -390,14 +390,14 @@ end
 local function maxT(t, isOverride)
 	local index = nil
 	local value = -math.huge
-	
+
 	for k,v in pairs(t) do
 		if isOverride and v >= value or v > value then
 			index = k
 			value = v
 		end
 	end
-	
+
 	return value, index
 end
 
@@ -424,7 +424,7 @@ local function rangeT(t, isOverride)
 			indexMin = k
 			min = v
 		end
-		
+
 		if isOverride and v >= max or v > max then
 			indexMax = k
 			max = v
@@ -436,7 +436,7 @@ end
 
 local function countValuesT(t)
 	local elements = {}
-	
+
 	for k,v in pairs(t) do
 		local element = elements[v]
 		if element then
@@ -445,7 +445,7 @@ local function countValuesT(t)
 			elements[v] = 1
 		end
 	end
-	
+
 	return elements
 end
 
@@ -455,11 +455,11 @@ end
 
 local function processPairsT(t, func)
 	local r = {}
-	
+
 	for n = 1, #t, 2 do
 		table.insert(r, func(t[n], t[n+1]))
 	end
-	
+
 	return r
 end
 
@@ -469,50 +469,52 @@ return {
 	TAU = TAU, -- PI*2
 	E = E, -- Euler's number
 	PHI = PHI, -- Golden Ratio
-	
+
 	----> Pure mathematical functions
 	nrt = nrt, -- Nth root; (x, n)
 	cbrt = cbrt, -- Cubic root; (x)
-	inverse = inverse,
-	ln = ln,
-	log2 = log2, -- Natural logarithm; (x)
+	inverse = inverse, -- 1/x; (x)
+	ln = ln, -- Natural logarithm; (x)
+	log2 = log2,
 	cos = cos,
 	sin = sin,
-	ncos = ncos,
-	nsin = nsin,
+	ncos = ncos, -- -cos(x)
+	nsin = nsin, -- -sin(x)
 	sec = sec, -- Secant; (x)
 	csc = csc, -- Co-secant; (x)
 	cot = cot, -- Co-tangent; (x)	
-	ease = ease,
-	smoothStep = smoothStep,
-	factorial = factorial,
-	fibonacci = fibonacci,
-	
+	ease = ease, -- https://godotengine.org/qa/59172/how-do-i-properly-use-the-ease-function
+	smoothStep = smoothStep, -- https://thebookofshaders.com/glossary/?search=smoothstep
+	factorial = factorial, -- x!
+	fibonacci = fibonacci, -- fib(x-1)+fib(x-2)
+
 	----> Practical mathematical functions
-	numberLength = numberLength,
-	fract = fract,
-	toFract = toFract,
-	wrap = wrap,
-	step = step,
-	snap = snap,
-	stepDecimals = stepDecimals,
-	
+	numberLength = numberLength, -- returns the number of digits in the number #tostring(number)
+	fract = fract, -- return the fractional part of a number, what's after the comma
+	toFract = toFract, -- return the number after the comma like 0.number
+	wrap = wrap, -- it cycles a arbitrary value between min and max, equivalent to the modulo operator but with configurable minimum
+	step = step, -- returns the closest multiple of factor to x, can be used to snap a position's components to a grid (Minecraft...)
+	snap = snap, -- the same as step, but can also handle seperation, Ex: your grid have a border
+	stepDecimals = stepDecimals, -- round the number to n digits after the comma
+
 	----> Conversion
-	cartesian2polar = cartesian2polar,
-	polar2cartesian = polar2cartesian,
-	
+	cartesian2polar = cartesian2polar, -- x, y to rau, angle
+	cylindrical2cartesian = cylindrical2cartesian, -- rau, angle, z to x,y,z
+	spherical2cartesian = spherical2cartesian, -- rau, angle, theta to x,y,z
+	polar2cartesian = polar2cartesian, -- rau, angle to x,y
+
 	----> Comparaison functions
 	approxEq = approxEq, -- Returns true if x approximately equals y, where EPSILON is the tolerance, error or deviation allowed; (x, y, epsilon?)
 	approxZero = approxZero, -- Returns true if x approximately equals 0
-	
+
 	----> Calculus
-	derivative = derivative,
-	integral = integral,
+	derivative = derivative, -- calculate the derivative of f using it's definite derivative (optimized) or numerically if none found
+	integral = integral, -- calculate the integral of f from x1 to x2 using it's definite primitive (optimized) or numerically if none found
 	integralAbs = integralAbs,
 	addDefiniteFunction = addDefiniteFunction,
 	productDerivative = productDerivative,
 	quotientDerivative = quotientDerivative,
-	
+
 	----> Table math
 	sumT = sumT, -- Sum of the values; (table)
 	differenceT = differenceT, -- Difference of the values; (table)
