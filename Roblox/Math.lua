@@ -22,7 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --]]
 
--- Math library dependencies
+----> Contribution
+--[[
+Bug thrixtle: versin, coversin, exsec, haversin, lerpExp, invLerpExp
+]]
+
+----> Math library dependencies
 local sqrt = math.sqrt
 local cos, sin, tan, atan2 = math.cos, math.sin, math.tan, math.atan2
 local exp, log, log10 = math.exp, math.log, math.log10
@@ -33,51 +38,29 @@ local PI = math.pi
 local sign = math.sign
 local min, max = math.min, math.max
 
--- Constructors
+----> Constructors
 local vector2, vector3 = Vector2.new, Vector3.new
 
--- Constants
+----> Constants
 local E = exp(1)
 local TAU = PI*2
 local PHI = (1+sqrt(5))/2
 local EPSILON = 0.001
 
--- Pure Mathematical Functions
-local function ncos(x)
-	return -cos(x)
-end
-
-local function nsin(x)
-	return -sin(x)
-end
-
-local function nrt(x, n)
-	return x^(1/n)
-end
-
-local function cbrt(x)
-	return x^(1/3)
-end
-
-local function ln(x)
-	return math.log(x, E)
-end
-
-local function log2(x)
-	return math.log(x, 2)
-end
-
-local function sec(x)
-	return 1/cos(x)
-end
-
-local function csc(x)
-	return 1/sin(x)
-end
-
-local function cot(x)
-	return 1/tan(x)
-end
+----> Pure Mathematical Functions
+local ncos = function(x) return -cos(x) end
+local nsin = function(x) return -sin(x) end
+local nrt = function(x, n) return x^(1/n) end
+local cbrt = function(x) return x^(1/3) end
+local ln = function(x) return math.log(x, E) end
+local log2 = function(x) return math.log(x, 2) end
+local sec = function(x) return 1/cos(x) end
+local csc = function(x) return 1/sin(x) end
+local cot = function(x) return 1/tan(x) end
+local versin = function(x) return 1 - math.cos(x) end
+local coversin = function(x) return 1 - math.sin(x) end
+local exsec = function(x) return (1 / math.cos(x)) - 1 end
+local haversin = function(x) return 1 / 2 * (1 - math.cos(x)) end
 
 local function inverse(x)
 	return 1/x
@@ -217,12 +200,19 @@ local function lerp(a, b, t)
 	return a + (b-a)*t
 end
 
-local function inverseLerp(c, d, x)
+local function invLerp(c, d, x)
 	return (x-c)/(d-c)
 end
 
+local function lerpExp(a, b, t)
+	return a ^ (1 - t) * b ^ t
+end
+
+local function invLerpExp(a, b, t)
+	return math.log(a / t) / math.log(a / b)
+end
+
 local function map(i1, i2, o1, o2, x)
-	-- return lerp(o1, o2, inverseLerp(i1, i2, x))
 	return o1 + (o2-o1)*((x-i1)/(i2-i1))
 end
 
@@ -641,6 +631,33 @@ local function absV(vec)
 	return applyV(vec, abs)
 end
 
+-- Random
+local RNG = Random.new()
+
+local function randomN(a, b)
+	if not b then
+		b = a
+		a = 0
+	end
+	
+	return RNG:NextInteger(a, b)
+end
+
+local function random(a, b)
+	if not b then
+		b = a
+		a = 0
+	end
+
+	return RNG:NextNumber(a, b)
+end
+
+local function randomItemT(t)
+	local keys = keysT(t)
+	local key = keys[randomN(1, #keys)]
+	return key, t[key]
+end
+
 return {
 	----> Constants
 	PI = PI, -- Ratio of a circle's circumference to its diameter.
@@ -661,6 +678,10 @@ return {
 	sec = sec, -- Secant(x), I don't use this functions usually, but it might be helpful if you have a formula that use them and you're too lazy like me
 	csc = csc, -- Co-secant(x),
 	cot = cot, -- Co-tangent(x),
+	versin = versin, -- versin(θ) = 1 - cos(θ) = 2sin²(θ/2)
+	coversin = coversin, -- coversine(θ) = 1 - sin(θ)
+	exsec = exsec, -- exsecant(θ) = sec(θ) - 1 = 1 / cos(θ) - 1
+	haversin = haversin, -- haversine(θ) = sin²(0⁄2) = 1 - cos(θ) / 2
 	ease = ease, -- https://godotengine.org/qa/59172/how-do-i-properly-use-the-ease-function
 	smoothStep = smoothStep, -- https://thebookofshaders.com/glossary/?search=smoothstep
 	factorial = factorial, -- x!
@@ -675,8 +696,10 @@ return {
 	snap = snap, -- the same as step, but can also handle seperation, Ex: your grid have a border
 	stepDecimals = stepDecimals, -- round the number to n digits after the comma
 	lerp = lerp, -- takes a range [a -> b] and a t value [0->1]. it returns a value travalling from a to b linearly, where t is the percentage it advanced (Ex: 50% = 0.5)
-	inverseLerp = inverseLerp, -- takes a range [c -> d] and a value x, it returns the t value of the value in range, basically where the value is relative to the range.
+	invLerp = invLerp, inverseLerp = invLerp, -- takes a range [c -> d] and a value x, it returns the t value of the value in range, basically where the value is relative to the range.
 	map = map, -- lerp(o1, o2, inverseLerp(i1, i2, x)), remaps a value x from the range [i1->i2] to [o1->o2], can be useful to create sliders.
+	lerpExp = lerpExp, -- exponential lerp
+	invLerpExp = invLerpExp, inverseLerpExp = invLerpExp, -- inverse exponential lerp
 	
 	----> Conversion
 	cartesian2polar = cartesian2polar, -- x, y to rau, angle
@@ -720,6 +743,11 @@ return {
 	midPosV = midPosV, -- Returns the middle position between the position vec1 and vec2, equivalent to lerp(vec1, vec2, 0.5)
 	applyV = applyV, -- Returns a new Vector3 by applying a function on the X, Y and Z components of a Vector3
 	absV = absV, -- Returns a new Vector3 where all the components of the vector are absolute (positive or nil)
+	
+	-- Random
+	randomItemT = randomItemT, -- Returns a random key in table
+	random = random, -- returns a random number in range [a,b]
+	randomN = randomN, -- returns a random integer in range [a,b]
 	
 	----> Helper functions
 	copyT = copyT, -- Returns a copy of a table
