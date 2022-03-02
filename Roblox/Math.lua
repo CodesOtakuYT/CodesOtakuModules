@@ -24,7 +24,7 @@ SOFTWARE.
 
 ----> Contribution
 --[[
-Bug thrixtle: versin, coversin, exsec, haversin, lerpExp, invLerpExp
+Bug thrixtle: versin, coversin, exsec, haversin, lerpExp, invLerpExp, fastFactorial
 ]]
 
 ----> Math library dependencies
@@ -85,6 +85,13 @@ local function factorial(x)
 	c = x*factorial(x-1)
 	factCache[x] = c
 	return c*sign
+end
+
+local function factorialFast(x)
+	local sign = sign(x)
+	x = abs(x)
+	local y = math.sqrt((2*x + 1/3) * 3.1415926535897932) * (x / 2.718281828459045) ^ x
+	return y*sign
 end
 
 local fibCache = {
@@ -228,18 +235,38 @@ local function approxZero(x, epsilon)
 end
 
 -- Table helper functions
-local function copyT(t, c, isDeepCopy)
-	c = c or {}
-
+local function deepCopyT(t : table, isKeyCopy : boolean, tableCopy : table?, registry : table?)
+	local reg = registry and registry[t]
+	if reg then return reg end
+	
+	tableCopy = tableCopy or {}
+	registry = registry or {}
+	registry[t] = tableCopy
+	
 	for k,v in pairs(t) do
-		if isDeepCopy and typeof(v) == "table" then
-			c[k] = copyT(v, nil, true)
+		if isKeyCopy and typeof(k) == "table" then
+			k = deepCopyT(k)
+		end
+		
+		if typeof(v) == "table" then
+			local r = deepCopyT(v, isKeyCopy, nil, registry)
+			tableCopy[k] = r
 		else
-			c[k] = v
+			tableCopy[k] = v
 		end
 	end
+	
+	return tableCopy
+end
 
-	return c
+local function copyT(t : table, tableCopy : table?)
+	tableCopy = tableCopy or {}
+	
+	for k,v in pairs(t) do
+		tableCopy[k] = v
+	end
+	
+	return tableCopy
 end
 
 local function invertT(t, r)
@@ -477,7 +504,7 @@ end
 
 local function mapT(t, func, isOverride, isStrict)
 	local r = isOverride and t or {}
-	
+
 	for k, v in pairs(func) do
 		local rv, rk = func(v, k)
 		if isStrict then
@@ -486,13 +513,13 @@ local function mapT(t, func, isOverride, isStrict)
 			r[rk or k] = rv
 		end
 	end
-	
+
 	return r
 end
 
 local function filterT(t, func, isOrdered : bool?)
 	local r = {}
-	
+
 	if isOrdered then
 		for i, v in ipairs(t) do
 			if func(v, i) then
@@ -512,11 +539,11 @@ end
 
 local function countT(t, func)
 	local n = 0
-	
+
 	for k,v in pairs(t) do
 		n += func(v) or 0
 	end
-	
+
 	return n
 end
 
@@ -532,28 +559,28 @@ end
 
 local function zipT(t1, t2)
 	local r = {}
-	
+
 	for i = 1, min(#t1, #t2) do
 		r[i] = {t1[i], t2[i]}
 	end
-	
+
 	return r
 end
 
 local function unzipT(t)
 	local r1, r2 = {},{}
-	
+
 	for _, tuple in ipairs(t) do
 		table.insert(r1, tuple[1])
 		table.insert(r2, tuple[2])
 	end
-	
+
 	return r1, r2
 end
 
 local function toRawT(t, isRecursive, tOut)
 	local r = tOut or {}
-	
+
 	for _, tuple in ipairs(t) do
 		for _, element in ipairs(tuple) do
 			if isRecursive and typeof(element) == "table" then
@@ -563,13 +590,13 @@ local function toRawT(t, isRecursive, tOut)
 			end
 		end
 	end
-	
+
 	return r
 end
 
 local function keysT(t, isRecursive, tOut)
 	local r = tOut or {}
-	
+
 	for k,v in pairs(t) do
 		if isRecursive and typeof(v) == "table" then
 			keysT(k, true, r)
@@ -577,7 +604,7 @@ local function keysT(t, isRecursive, tOut)
 			table.insert(r, k)
 		end
 	end
-	
+
 	return r
 end
 
@@ -631,6 +658,12 @@ local function absV(vec)
 	return applyV(vec, abs)
 end
 
+local function angleV(vec1, vec2)
+	vec2 = vec2 or Vector3.zero
+	local vec = vec1.Unit - vec2.Unit
+	return atan2(vec.Y, vec.X)
+end
+
 -- Random
 local RNG = Random.new()
 
@@ -639,7 +672,7 @@ local function randomN(a, b)
 		b = a
 		a = 0
 	end
-	
+
 	return RNG:NextInteger(a, b)
 end
 
@@ -650,6 +683,10 @@ local function random(a, b)
 	end
 
 	return RNG:NextNumber(a, b)
+end
+
+local function randomV()
+	return RNG:NextUnitVector()
 end
 
 local function randomItemT(t)
@@ -685,6 +722,7 @@ return {
 	ease = ease, -- https://godotengine.org/qa/59172/how-do-i-properly-use-the-ease-function
 	smoothStep = smoothStep, -- https://thebookofshaders.com/glossary/?search=smoothstep
 	factorial = factorial, -- x!
+	fastFactorial = factorialFast, factorialFast = factorialFast, -- x! but sacrifice accuracy for speed
 	fibonacci = fibonacci, -- fib(x-1)+fib(x-2)
 
 	----> Practical mathematical functions
@@ -700,7 +738,7 @@ return {
 	map = map, -- lerp(o1, o2, inverseLerp(i1, i2, x)), remaps a value x from the range [i1->i2] to [o1->o2], can be useful to create sliders.
 	lerpExp = lerpExp, -- exponential lerp
 	invLerpExp = invLerpExp, inverseLerpExp = invLerpExp, -- inverse exponential lerp
-	
+
 	----> Conversion
 	cartesian2polar = cartesian2polar, -- x, y to rau, angle
 	cylindrical2cartesian = cylindrical2cartesian, -- rau, angle, z to x,y,z
@@ -719,7 +757,7 @@ return {
 	productDerivative = productDerivative, -- (f*g)' = f'g-g'f the chain rule
 	quotientDerivative = quotientDerivative, -- (f/g)' = (f'g-g'f)/(g^2) the chain rule and the derivative of the inverse of f(x)
 	compositeDerivative = compositeDerivative, -- (f(g))' = f'(g)*g'
-	
+
 	----> Table math
 	sumT = sumT, -- Sum of the values; (table)
 	differenceT = differenceT, -- Difference of the values; (table)
@@ -743,17 +781,21 @@ return {
 	midPosV = midPosV, -- Returns the middle position between the position vec1 and vec2, equivalent to lerp(vec1, vec2, 0.5)
 	applyV = applyV, -- Returns a new Vector3 by applying a function on the X, Y and Z components of a Vector3
 	absV = absV, -- Returns a new Vector3 where all the components of the vector are absolute (positive or nil)
+	angleV = angleV,
 	
 	-- Random
 	randomItemT = randomItemT, -- Returns a random key in table
 	random = random, -- returns a random number in range [a,b]
 	randomN = randomN, -- returns a random integer in range [a,b]
-	
+	randomV = randomV, -- returns a unit vector3 as a random direction
+
 	----> Helper functions
 	copyT = copyT, -- Returns a copy of a table
+	deepCopyT = deepCopyT, -- Returns a copy of the table and all of the tables inside it, if isKeyCopy, then it will also deep copy the keys of the table if they're also tables.
 	invertT = invertT, -- the keys becomes the values and vice versa, takes a table [y1 = x1, y2 = x2...yn = xn], returns [x1 = y1, x2 = y2...xn = yn]
 	zipT = zipT, -- takes 2 tables and zip them together {{t1[1], t2[1]}, {t1[2], t2[2]}...{t1[n], t2[n]}}
 	unzipT = unzipT, -- the inverse of zip, takes 1 table of pairs and unzip it into 2 tables
 	valuesT = valuesT, -- return a table of all the values inside the table, there is also recursive mode for nested tables
 	keysT = keysT, -- the same as valuesT, but for table keys
+	toRawT = toRawT, -- returns a one dimensional table copy of a complex recursive table
 }
